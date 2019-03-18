@@ -2,44 +2,40 @@
 
 // load modules
 const express = require('express');
-const morgan = require('morgan');
+const morgan  = require('morgan');
+const cAuth   = require('./auth');
+const routes  = require('./routes');
 
-// variable to enable global error logging
-const enableGlobalErrorLogging = process.env.ENABLE_GLOBAL_ERROR_LOGGING === 'true';
+//Parse the body
+const jsonParser = require("body-parser").json;
+
+const connection = require("./connection");
 
 // create the Express app
 const app = express();
 
+
 // setup morgan which gives us http request logging
 app.use(morgan('dev'));
+// setup the json parser middleware
+app.use(jsonParser());
+
+//DB
+connection.exec();
+
+app.use(routes.open());
+
+//AUTH
+app.use(cAuth);
 
 // TODO setup your api routes here
-
-// setup a friendly greeting for the root route
-app.get('/', (req, res) => {
-  res.json({
-    message: 'Welcome to the REST API project!',
-  });
-});
+app.use(routes.common());
 
 // send 404 if no other route matched
-app.use((req, res) => {
-  res.status(404).json({
-    message: 'Route Not Found',
-  });
-});
+app.use(routes.notFound);
 
 // setup a global error handler
-app.use((err, req, res, next) => {
-  if (enableGlobalErrorLogging) {
-    console.error(`Global error handler: ${JSON.stringify(err.stack)}`);
-  }
-
-  res.status(err.status || 500).json({
-    message: err.message,
-    error: {},
-  });
-});
+app.use(routes.handleError);
 
 // set our port
 app.set('port', process.env.PORT || 5000);
